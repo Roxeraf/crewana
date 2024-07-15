@@ -7,7 +7,7 @@ sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
 
 import streamlit as st
 from crewai import Agent, Task, Crew
-from langchain_groq import ChatGroq
+from langchain_openai import ChatOpenAI
 import pandas as pd
 from dotenv import load_dotenv
 import os
@@ -16,28 +16,28 @@ import os
 load_dotenv()
 
 # Try to get the API key from environment variables or Streamlit secrets
-groq_api_key = os.getenv("GROQ_API_KEY") or st.secrets.get("GROQ_API_KEY")
+openai_api_key = os.getenv("OPENAI_API_KEY") or st.secrets.get("OPENAI_API_KEY")
 
-if not groq_api_key:
-    st.error("GROQ API key not found. Please set it in .env file or Streamlit secrets.")
+if not openai_api_key:
+    st.error("OpenAI API key not found. Please set it in .env file or Streamlit secrets.")
     st.stop()
 
-# Set up Groq client with the correct model name
-groq_model = ChatGroq(groq_api_key=groq_api_key, model_name="llama2-70b-4096")
+# Set up OpenAI client
+openai_model = ChatOpenAI(api_key=openai_api_key, model_name="gpt-3.5-turbo")
 
 # Define your agents
 data_analyst = Agent(
     role='Data Analyst',
     goal='Analyze data and provide insights',
     backstory='You are an expert data analyst with years of experience in various industries.',
-    llm=groq_model
+    llm=openai_model
 )
 
 data_visualizer = Agent(
     role='Data Visualizer',
     goal='Create clear and insightful visualizations',
     backstory='You are a skilled data visualizer with expertise in creating impactful charts and graphs.',
-    llm=groq_model
+    llm=openai_model
 )
 
 # Streamlit app
