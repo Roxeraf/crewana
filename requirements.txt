@@ -1,2 +1,6 @@
 streamlit
-openai
+crewai
+langchain-groq
+pandas
+numpy
+plotly
