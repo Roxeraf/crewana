@@ -1,13 +1,25 @@
+import sqlite3
+print(f"SQLite version: {sqlite3.sqlite_version}")
+
+__import__('pysqlite3')
+import sys
+sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
+
 import streamlit as st
 from crewai import Agent, Task, Crew
 from langchain_groq import ChatGroq
 import pandas as pd
+from dotenv import load_dotenv
+import os
 
-# Try to get the API key from Streamlit secrets
-try:
-    groq_api_key = st.secrets["GROQ_API_KEY"]
-except KeyError:
-    st.error("GROQ API key not found in Streamlit secrets. Please add it to deploy the app.")
+# Load environment variables
+load_dotenv()
+
+# Try to get the API key from environment variables or Streamlit secrets
+groq_api_key = os.getenv("GROQ_API_KEY") or st.secrets.get("GROQ_API_KEY")
+
+if not groq_api_key:
+    st.error("GROQ API key not found. Please set it in .env file or Streamlit secrets.")
     st.stop()
 
 # Set up Groq client
@@ -31,14 +43,12 @@ data_visualizer = Agent(
 # Define tasks
 analysis_task = Task(
     description='Analyze the provided dataset and extract key insights',
-    agent=data_analyst,
-    expected_output='A detailed report of the data analysis findings'
+    agent=data_analyst
 )
 
 visualization_task = Task(
     description='Create visualizations based on the analysis results',
-    agent=data_visualizer,
-    expected_output='A list of visualization suggestions and descriptions'
+    agent=data_visualizer
 )
 
 # Create the crew
@@ -83,8 +93,11 @@ if uploaded_file is not None:
             message_placeholder = st.empty()
             full_response = ""
             
+            # Generate response using crewAI
+            result = data_crew.kickoff(prompt)
+            
             # Simulate stream of response with milliseconds delay
-            for chunk in data_crew.kickoff(prompt):
+            for chunk in result.split():
                 full_response += chunk + " "
                 message_placeholder.markdown(full_response + "▌")
             
@@ -93,7 +106,8 @@ if uploaded_file is not None:
         # Add assistant response to chat history
         st.session_state.messages.append({"role": "assistant", "content": full_response})
 
-    # Add data summary and basic stats
+# Add data summary and basic stats
+if uploaded_file is not None:
     st.subheader("Data Summary")
     st.write(df.describe())
     
