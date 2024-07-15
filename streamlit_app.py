@@ -43,12 +43,14 @@ data_visualizer = Agent(
 # Define tasks
 analysis_task = Task(
     description='Analyze the provided dataset and extract key insights',
-    agent=data_analyst
+    agent=data_analyst,
+    expected_output="A detailed report of the data analysis findings"
 )
 
 visualization_task = Task(
     description='Create visualizations based on the analysis results',
-    agent=data_visualizer
+    agent=data_visualizer,
+    expected_output="A list of visualization suggestions with descriptions"
 )
 
 # Create the crew
