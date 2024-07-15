@@ -22,8 +22,8 @@ if not groq_api_key:
     st.error("GROQ API key not found. Please set it in .env file or Streamlit secrets.")
     st.stop()
 
-# Set up Groq client
-groq_model = ChatGroq(groq_api_key=groq_api_key, model_name="llama3-8b-8k")
+# Set up Groq client with the correct model name
+groq_model = ChatGroq(groq_api_key=groq_api_key, model_name="llama2-70b-4096")
 
 # Define your agents
 data_analyst = Agent(
