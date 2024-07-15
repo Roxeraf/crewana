@@ -40,25 +40,6 @@ data_visualizer = Agent(
     llm=groq_model
 )
 
-# Define tasks
-analysis_task = Task(
-    description='Analyze the provided dataset and extract key insights',
-    agent=data_analyst,
-    expected_output="A detailed report of the data analysis findings"
-)
-
-visualization_task = Task(
-    description='Create visualizations based on the analysis results',
-    agent=data_visualizer,
-    expected_output="A list of visualization suggestions with descriptions"
-)
-
-# Create the crew
-data_crew = Crew(
-    agents=[data_analyst, data_visualizer],
-    tasks=[analysis_task, visualization_task]
-)
-
 # Streamlit app
 st.title("AI-Powered Data Analysis Assistant")
 
@@ -95,8 +76,27 @@ if uploaded_file is not None:
             message_placeholder = st.empty()
             full_response = ""
             
+            # Define tasks with user input
+            analysis_task = Task(
+                description=f'Analyze the provided dataset and extract key insights related to: {prompt}',
+                agent=data_analyst,
+                expected_output="A detailed report of the data analysis findings"
+            )
+
+            visualization_task = Task(
+                description=f'Create visualizations based on the analysis results for the query: {prompt}',
+                agent=data_visualizer,
+                expected_output="A list of visualization suggestions with descriptions"
+            )
+
+            # Create the crew
+            data_crew = Crew(
+                agents=[data_analyst, data_visualizer],
+                tasks=[analysis_task, visualization_task]
+            )
+            
             # Generate response using crewAI
-            result = data_crew.kickoff(prompt)
+            result = data_crew.kickoff()
             
             # Simulate stream of response with milliseconds delay
             for chunk in result.split():
