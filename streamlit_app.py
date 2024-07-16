@@ -1,13 +1,10 @@
 import streamlit as st
-from crewai import Agent, Task, Crew, Process
+from crewai import Agent, Task, Crew
 from langchain_openai import ChatOpenAI
-from langchain.tools import Tool
 import pandas as pd
 import os
 from dotenv import load_dotenv
-import matplotlib.pyplot as plt
-import seaborn as sns
-import io
+from tools import tools  # Import tools from the tools.py file
 
 # Load environment variables
 load_dotenv()
@@ -22,46 +19,29 @@ if not openai_api_key:
 # Initialize OpenAI model
 llm = ChatOpenAI(model_name="gpt-3.5-turbo", openai_api_key=openai_api_key)
 
-# Define tools
-def calculate_statistics(data):
-    return data.describe().to_string()
-
-def create_correlation_heatmap(data):
-    plt.figure(figsize=(10, 8))
-    sns.heatmap(data.corr(), annot=True, cmap='coolwarm')
-    plt.title('Correlation Heatmap')
-    buf = io.BytesIO()
-    plt.savefig(buf, format='png')
-    buf.seek(0)
-    return buf
-
-def identify_outliers(data):
-    Q1 = data.quantile(0.25)
-    Q3 = data.quantile(0.75)
-    IQR = Q3 - Q1
-    outliers = ((data < (Q1 - 1.5 * IQR)) | (data > (Q3 + 1.5 * IQR))).sum()
-    return outliers.to_string()
-
-# Define agents without tools
+# Define agents
 quality_analyst = Agent(
     role="Quality Analyst",
     goal="Analyze quality data to identify trends, issues, and improvement opportunities",
     backstory="You are an experienced quality analyst with expertise in statistical process control and quality management systems.",
-    llm=llm
+    llm=llm,
+    tools=tools
 )
 
 process_analyst = Agent(
     role="Process Analyst",
     goal="Analyze process data to optimize production efficiency and identify bottlenecks",
     backstory="You have extensive experience in process engineering and lean manufacturing principles.",
-    llm=llm
+    llm=llm,
+    tools=tools
 )
 
 data_scientist = Agent(
     role="Data Scientist",
     goal="Perform advanced analytics on combined quality and process data",
     backstory="You're an expert in machine learning and statistical analysis with a focus on manufacturing applications.",
-    llm=llm
+    llm=llm,
+    tools=tools
 )
 
 report_writer = Agent(
@@ -93,33 +73,20 @@ if quality_file is not None and process_file is not None:
 
     if st.button("Analyze Data"):
         if analysis_focus:
-            # Define tasks with tools
+            # Define tasks
             quality_analysis = Task(
-                description=f"Analyze the quality data focusing on {analysis_focus}. Use the Calculate Statistics and Identify Outliers functions to support your analysis. Identify key quality metrics, trends, and potential issues.",
-                agent=quality_analyst,
-                tools=[
-                    Tool(name="Calculate Statistics", func=calculate_statistics, description="Calculate basic statistics of the data"),
-                    Tool(name="Identify Outliers", func=identify_outliers, description="Identify outliers in the data")
-                ]
+                description=f"Analyze the quality data focusing on {analysis_focus}. Use the available tools to support your analysis. Identify key quality metrics, trends, and potential issues.",
+                agent=quality_analyst
             )
 
             process_analysis = Task(
-                description=f"Analyze the process data focusing on {analysis_focus}. Use the Calculate Statistics and Create Correlation Heatmap functions to support your analysis. Identify efficiency metrics, bottlenecks, and areas for improvement.",
-                agent=process_analyst,
-                tools=[
-                    Tool(name="Calculate Statistics", func=calculate_statistics, description="Calculate basic statistics of the data"),
-                    Tool(name="Create Correlation Heatmap", func=create_correlation_heatmap, description="Create a correlation heatmap of the data")
-                ]
+                description=f"Analyze the process data focusing on {analysis_focus}. Use the available tools to support your analysis. Identify efficiency metrics, bottlenecks, and areas for improvement.",
+                agent=process_analyst
             )
 
             combined_analysis = Task(
-                description=f"Perform advanced analytics on both quality and process data. Use all available functions to support your analysis. Identify correlations between process parameters and quality outcomes related to {analysis_focus}. Use insights from previous analyses.",
-                agent=data_scientist,
-                tools=[
-                    Tool(name="Calculate Statistics", func=calculate_statistics, description="Calculate basic statistics of the data"),
-                    Tool(name="Create Correlation Heatmap", func=create_correlation_heatmap, description="Create a correlation heatmap of the data"),
-                    Tool(name="Identify Outliers", func=identify_outliers, description="Identify outliers in the data")
-                ]
+                description=f"Perform advanced analytics on both quality and process data. Use all available tools to support your analysis. Identify correlations between process parameters and quality outcomes related to {analysis_focus}. Use insights from previous analyses.",
+                agent=data_scientist
             )
 
             final_report = Task(
