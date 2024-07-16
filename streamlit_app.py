@@ -42,16 +42,30 @@ def identify_outliers(data):
     outliers = ((data < (Q1 - 1.5 * IQR)) | (data > (Q3 + 1.5 * IQR))).sum()
     return outliers.to_string()
 
-# Define agents with tools
+# Define tool lists
+quality_tools = [
+    Tool(name="Calculate Statistics", func=calculate_statistics, description="Calculate basic statistics of the data"),
+    Tool(name="Identify Outliers", func=identify_outliers, description="Identify outliers in the data")
+]
+
+process_tools = [
+    Tool(name="Calculate Statistics", func=calculate_statistics, description="Calculate basic statistics of the data"),
+    Tool(name="Create Correlation Heatmap", func=create_correlation_heatmap, description="Create a correlation heatmap of the data")
+]
+
+data_science_tools = [
+    Tool(name="Calculate Statistics", func=calculate_statistics, description="Calculate basic statistics of the data"),
+    Tool(name="Create Correlation Heatmap", func=create_correlation_heatmap, description="Create a correlation heatmap of the data"),
+    Tool(name="Identify Outliers", func=identify_outliers, description="Identify outliers in the data")
+]
+
+# Define agents
 quality_analyst = Agent(
     role="Quality Analyst",
     goal="Analyze quality data to identify trends, issues, and improvement opportunities",
     backstory="You are an experienced quality analyst with expertise in statistical process control and quality management systems.",
     llm=llm,
-    tools=[
-        Tool(name="Calculate Statistics", func=calculate_statistics, description="Calculate basic statistics of the data"),
-        Tool(name="Identify Outliers", func=identify_outliers, description="Identify outliers in the data")
-    ]
+    tools=quality_tools
 )
 
 process_analyst = Agent(
@@ -59,10 +73,7 @@ process_analyst = Agent(
     goal="Analyze process data to optimize production efficiency and identify bottlenecks",
     backstory="You have extensive experience in process engineering and lean manufacturing principles.",
     llm=llm,
-    tools=[
-        Tool(name="Calculate Statistics", func=calculate_statistics, description="Calculate basic statistics of the data"),
-        Tool(name="Create Correlation Heatmap", func=create_correlation_heatmap, description="Create a correlation heatmap of the data")
-    ]
+    tools=process_tools
 )
 
 data_scientist = Agent(
@@ -70,11 +81,7 @@ data_scientist = Agent(
     goal="Perform advanced analytics on combined quality and process data",
     backstory="You're an expert in machine learning and statistical analysis with a focus on manufacturing applications.",
     llm=llm,
-    tools=[
-        Tool(name="Calculate Statistics", func=calculate_statistics, description="Calculate basic statistics of the data"),
-        Tool(name="Create Correlation Heatmap", func=create_correlation_heatmap, description="Create a correlation heatmap of the data"),
-        Tool(name="Identify Outliers", func=identify_outliers, description="Identify outliers in the data")
-    ]
+    tools=data_science_tools
 )
 
 report_writer = Agent(
