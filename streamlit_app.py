@@ -1,119 +1,157 @@
-import sqlite3
-print(f"SQLite version: {sqlite3.sqlite_version}")
-
-__import__('pysqlite3')
-import sys
-sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
-
 import streamlit as st
-from crewai import Agent, Task, Crew
+from crewai import Agent, Task, Crew, Process
 from langchain_openai import ChatOpenAI
 import pandas as pd
-from dotenv import load_dotenv
 import os
+from dotenv import load_dotenv
 
 # Load environment variables
 load_dotenv()
 
-# Try to get the API key from environment variables or Streamlit secrets
+# Set up OpenAI API key
 openai_api_key = os.getenv("OPENAI_API_KEY") or st.secrets.get("OPENAI_API_KEY")
 
 if not openai_api_key:
     st.error("OpenAI API key not found. Please set it in .env file or Streamlit secrets.")
     st.stop()
 
-# Set up OpenAI client
-openai_model = ChatOpenAI(api_key=openai_api_key, model_name="gpt-3.5-turbo")
+# Initialize OpenAI model
+llm = ChatOpenAI(model_name="gpt-3.5-turbo", openai_api_key=openai_api_key)
 
-# Define your agents
-data_analyst = Agent(
-    role='Data Analyst',
-    goal='Analyze data and provide insights',
-    backstory='You are an expert data analyst with years of experience in various industries.',
-    llm=openai_model
+# Define agents
+process_engineer = Agent(
+    role="Process Engineer",
+    goal="Optimize the production process flow and efficiency",
+    backstory="You have 15 years of experience in industrial process engineering and specialize in lean manufacturing.",
+    llm=llm
 )
 
-data_visualizer = Agent(
-    role='Data Visualizer',
-    goal='Create clear and insightful visualizations',
-    backstory='You are a skilled data visualizer with expertise in creating impactful charts and graphs.',
-    llm=openai_model
+data_scientist = Agent(
+    role="Data Scientist",
+    goal="Analyze production data to uncover patterns and insights",
+    backstory="You're an expert in machine learning and statistical analysis with a focus on industrial applications.",
+    llm=llm
+)
+
+data_analyst = Agent(
+    role="Data Analyst",
+    goal="Prepare and visualize production data for easy interpretation",
+    backstory="You excel at transforming raw data into meaningful visualizations and reports.",
+    llm=llm
+)
+
+programmer = Agent(
+    role="Programmer",
+    goal="Develop and maintain software tools for production monitoring and automation",
+    backstory="You're a skilled software engineer with expertise in industrial automation and IoT.",
+    llm=llm
+)
+
+quality_control = Agent(
+    role="Quality Control Specialist",
+    goal="Ensure product quality meets or exceeds standards throughout the production process",
+    backstory="You have a keen eye for detail and deep knowledge of quality management systems.",
+    llm=llm
+)
+
+report_writer = Agent(
+    role="Report Writer",
+    goal="Compile all findings and recommendations into a comprehensive, well-structured report",
+    backstory="You're a skilled technical writer with experience in creating clear, concise reports for complex industrial processes.",
+    llm=llm
 )
 
 # Streamlit app
-st.title("AI-Powered Data Analysis Assistant")
+st.title("Production Process Analysis")
 
-# Initialize session state for chat history
-if 'messages' not in st.session_state:
-    st.session_state.messages = []
-
-# File uploader
-uploaded_file = st.file_uploader("Choose a CSV file", type="csv")
+# File uploader for CSV
+uploaded_file = st.file_uploader("Upload your production data (CSV)", type="csv")
 
 if uploaded_file is not None:
-    # Read the CSV file
     df = pd.read_csv(uploaded_file)
-    
-    # Display the dataframe
-    st.write(df)
-    
-    # Display chat messages
-    for message in st.session_state.messages:
-        with st.chat_message(message["role"]):
-            st.markdown(message["content"])
+    st.write(df.head())
 
-    # Chat input
-    if prompt := st.chat_input("Ask about your data"):
-        # Add user message to chat history
-        st.session_state.messages.append({"role": "user", "content": prompt})
-        
-        # Display user message in chat message container
-        with st.chat_message("user"):
-            st.markdown(prompt)
-        
-        # Generate AI response
-        with st.chat_message("assistant"):
-            message_placeholder = st.empty()
-            full_response = ""
-            
-            # Define tasks with user input
-            analysis_task = Task(
-                description=f'Analyze the provided dataset and extract key insights related to: {prompt}',
-                agent=data_analyst,
-                expected_output="A detailed report of the data analysis findings"
+    # User input for specific analysis
+    analysis_focus = st.text_input("What aspect of the production process would you like to analyze?")
+
+    if st.button("Analyze Process"):
+        if analysis_focus:
+            # Define tasks
+            data_preparation = Task(
+                description=f"Prepare and clean the production data for analysis, focusing on {analysis_focus}. Provide a summary of the data preparation steps.",
+                agent=data_analyst
             )
 
-            visualization_task = Task(
-                description=f'Create visualizations based on the analysis results for the query: {prompt}',
-                agent=data_visualizer,
-                expected_output="A list of visualization suggestions with descriptions"
+            data_analysis = Task(
+                description=f"Analyze the prepared data to identify patterns and insights related to {analysis_focus}. Provide detailed findings.",
+                agent=data_scientist
             )
 
-            # Create the crew
-            data_crew = Crew(
-                agents=[data_analyst, data_visualizer],
-                tasks=[analysis_task, visualization_task]
+            process_optimization = Task(
+                description=f"Based on the data analysis, suggest process improvements for {analysis_focus}. Provide specific, actionable recommendations.",
+                agent=process_engineer
             )
-            
-            # Generate response using crewAI
-            result = data_crew.kickoff()
-            
-            # Simulate stream of response with milliseconds delay
-            for chunk in result.split():
-                full_response += chunk + " "
-                message_placeholder.markdown(full_response + "▌")
-            
-            message_placeholder.markdown(full_response)
-        
-        # Add assistant response to chat history
-        st.session_state.messages.append({"role": "assistant", "content": full_response})
 
-# Add data summary and basic stats
-if uploaded_file is not None:
-    st.subheader("Data Summary")
-    st.write(df.describe())
-    
-    st.subheader("Column Information")
-    st.write(df.dtypes)
+            quality_assessment = Task(
+                description=f"Evaluate the quality implications of the proposed improvements for {analysis_focus}. Discuss potential risks and mitigation strategies.",
+                agent=quality_control
+            )
 
-# Add more Streamlit components and functionality as needed
+            automation_suggestion = Task(
+                description=f"Propose software solutions or automations to support the improvements in {analysis_focus}. Include high-level implementation steps.",
+                agent=programmer
+            )
+
+            final_report = Task(
+                description=f"Compile a comprehensive report on the analysis of {analysis_focus} in the production process. Include an executive summary, detailed findings from each specialist, recommendations, and next steps.",
+                agent=report_writer
+            )
+
+            # Create Crew
+            crew = Crew(
+                agents=[process_engineer, data_scientist, data_analyst, programmer, quality_control, report_writer],
+                tasks=[data_preparation, data_analysis, process_optimization, quality_assessment, automation_suggestion, final_report],
+                verbose=True
+            )
+
+            # Execute the crew's tasks
+            with st.spinner("Analyzing process and generating report... This may take a few minutes."):
+                result = crew.kickoff()
+
+            # Display results
+            st.subheader("Analysis Summary")
+            st.write(result)
+
+            st.subheader("Full Report")
+            report = crew.tasks[-1].output  # Get the output of the final task (report writing)
+            st.markdown(report)
+
+            # Option to download the report
+            st.download_button(
+                label="Download Full Report",
+                data=report,
+                file_name="production_process_analysis_report.md",
+                mime="text/markdown"
+            )
+        else:
+            st.warning("Please specify an aspect of the production process to analyze.")
+
+else:
+    st.info("Please upload a CSV file containing your production data.")
+
+# Additional app sections
+st.subheader("About This Tool")
+st.write("""
+This tool uses AI agents powered by GPT-3.5 to analyze your production process data. 
+It combines the expertise of a Process Engineer, Data Scientist, Data Analyst, 
+Programmer, and Quality Control Specialist to provide comprehensive insights 
+and recommendations for process improvement. A final report is generated to summarize all findings.
+""")
+
+st.subheader("How to Use")
+st.write("""
+1. Upload your production data CSV file.
+2. Specify the aspect of the production process you want to analyze.
+3. Click 'Analyze Process' to get insights, recommendations, and a full report.
+4. Download the report for offline viewing or sharing.
+""")
