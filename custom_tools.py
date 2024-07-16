@@ -1,4 +1,3 @@
-# custom_tools.py
 from langchain.tools import BaseTool
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -42,6 +41,7 @@ class DataVisualizationTool(BaseTool):
         buf = io.BytesIO()
         plt.savefig(buf, format='png')
         buf.seek(0)
+        plt.close()  # Close the plot to free up memory
         return "Correlation heatmap created successfully. (Image data not shown in text output)"
 
     def _arun(self, data: str):
