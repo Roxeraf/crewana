@@ -1,10 +1,9 @@
 import streamlit as st
-from crewai import Agent, Task, Crew
-from langchain_openai import ChatOpenAI
+from crewai import Task, Crew
+from dotenv import load_dotenv
+from crewai.agents import quality_analyst, process_analyst, data_scientist, report_writer
 import pandas as pd
 import os
-from dotenv import load_dotenv
-from custom_tools import QualityDataAnalysisTool, ProcessDataAnalysisTool, DataVisualizationTool, OutlierDetectionTool
 
 # Load environment variables
 load_dotenv()
@@ -15,52 +14,6 @@ openai_api_key = os.getenv("OPENAI_API_KEY") or st.secrets.get("OPENAI_API_KEY")
 if not openai_api_key:
     st.error("OpenAI API key not found. Please set it in .env file or Streamlit secrets.")
     st.stop()
-
-# Initialize OpenAI model
-llm = ChatOpenAI(model_name="gpt-3.5-turbo", openai_api_key=openai_api_key)
-
-# Initialize tools
-quality_tool = QualityDataAnalysisTool()
-process_tool = ProcessDataAnalysisTool()
-visualization_tool = DataVisualizationTool()
-outlier_tool = OutlierDetectionTool()
-
-# Create a list of tools to pass to agents
-quality_tools = [quality_tool, visualization_tool, outlier_tool]
-process_tools = [process_tool, visualization_tool]
-data_scientist_tools = [quality_tool, process_tool, visualization_tool, outlier_tool]
-
-# Define agents with specific tools
-quality_analyst = Agent(
-    role="Quality Analyst",
-    goal="Analyze quality data to identify trends, issues, and improvement opportunities",
-    backstory="You are an experienced quality analyst with expertise in statistical process control and quality management systems.",
-    llm=llm,
-    tools=quality_tools
-)
-
-process_analyst = Agent(
-    role="Process Analyst",
-    goal="Analyze process data to optimize production efficiency and identify bottlenecks",
-    backstory="You have extensive experience in process engineering and lean manufacturing principles.",
-    llm=llm,
-    tools=process_tools
-)
-
-data_scientist = Agent(
-    role="Data Scientist",
-    goal="Perform advanced analytics on combined quality and process data",
-    backstory="You're an expert in machine learning and statistical analysis with a focus on manufacturing applications.",
-    llm=llm,
-    tools=data_scientist_tools
-)
-
-report_writer = Agent(
-    role="Report Writer",
-    goal="Compile all findings and recommendations into a comprehensive, actionable report",
-    backstory="You're a skilled technical writer with experience in creating clear, concise reports for manufacturing environments.",
-    llm=llm
-)
 
 # Streamlit app
 st.title("Quality and Process Data Analysis")
@@ -125,23 +78,8 @@ if quality_file is not None and process_file is not None:
             st.write(result)
 
             st.subheader("Full Report")
-            report = crew.tasks[-1].output  # Get the output of the final task (report writing)
-            st.markdown(report)
+            report = crew.tasks[-1].output  # Get
 
-            # Option to download the report
-            st.download_button(
-                label="Download Full Report",
-                data=report,
-                file_name="quality_process_analysis_report.md",
-                mime="text/markdown"
-            )
-        else:
-            st.warning("Please specify an aspect of quality or process to analyze.")
-
-else:
-    st.info("Please upload both quality and process data CSV files to begin the analysis.")
-
-# Additional app sections (About This Tool and How to Use) remain the same
 
 
 
