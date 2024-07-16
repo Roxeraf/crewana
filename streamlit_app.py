@@ -138,3 +138,4 @@ else:
     st.info("Please upload both quality and process data CSV files to begin the analysis.")
 
 # Additional app sections (About This Tool and How to Use) remain the same
+

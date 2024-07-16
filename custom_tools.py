@@ -1,3 +1,4 @@
+# custom_tools.py
 from langchain.tools import BaseTool
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -61,3 +62,4 @@ class OutlierDetectionTool(BaseTool):
 
     def _arun(self, data: str):
         raise NotImplementedError("This tool does not support async")
+
