@@ -139,3 +139,4 @@ else:
 
 # Additional app sections (About This Tool and How to Use) remain the same
 
+
