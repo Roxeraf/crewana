@@ -1,7 +1,7 @@
 import streamlit as st
 from crewai import Agent, Task, Crew
 from langchain_openai import ChatOpenAI
-from crewai_tools import Tool
+from langchain.tools import Tool
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -23,14 +23,12 @@ if not openai_api_key:
 llm = ChatOpenAI(model_name="gpt-3.5-turbo", openai_api_key=openai_api_key)
 
 # Define tool functions
-@Tool("Calculate Statistics")
 def calculate_statistics(data: str) -> str:
     """Calculate basic statistics of the data."""
     df = pd.read_json(data)
     return df.describe().to_json()
 
-@Tool("Create Correlation Heatmap")
-def create_correlation_heatmap(data: str) -> bytes:
+def create_correlation_heatmap(data: str) -> str:
     """Create a correlation heatmap of the data."""
     df = pd.read_json(data)
     plt.figure(figsize=(10, 8))
@@ -39,9 +37,8 @@ def create_correlation_heatmap(data: str) -> bytes:
     buf = io.BytesIO()
     plt.savefig(buf, format='png')
     buf.seek(0)
-    return buf.getvalue()
+    return "Correlation heatmap created successfully."
 
-@Tool("Identify Outliers")
 def identify_outliers(data: str) -> str:
     """Identify outliers in the data."""
     df = pd.read_json(data)
@@ -51,13 +48,32 @@ def identify_outliers(data: str) -> str:
     outliers = ((df < (Q1 - 1.5 * IQR)) | (df > (Q3 + 1.5 * IQR))).sum()
     return outliers.to_json()
 
+# Create tools
+tools = [
+    Tool.from_function(
+        func=calculate_statistics,
+        name="Calculate Statistics",
+        description="Calculate basic statistics of the data."
+    ),
+    Tool.from_function(
+        func=create_correlation_heatmap,
+        name="Create Correlation Heatmap",
+        description="Create a correlation heatmap of the data."
+    ),
+    Tool.from_function(
+        func=identify_outliers,
+        name="Identify Outliers",
+        description="Identify outliers in the data."
+    )
+]
+
 # Define agents with tools
 quality_analyst = Agent(
     role="Quality Analyst",
     goal="Analyze quality data to identify trends, issues, and improvement opportunities",
     backstory="You are an experienced quality analyst with expertise in statistical process control and quality management systems.",
     llm=llm,
-    tools=[calculate_statistics, create_correlation_heatmap, identify_outliers]
+    tools=tools
 )
 
 process_analyst = Agent(
@@ -65,7 +81,7 @@ process_analyst = Agent(
     goal="Analyze process data to optimize production efficiency and identify bottlenecks",
     backstory="You have extensive experience in process engineering and lean manufacturing principles.",
     llm=llm,
-    tools=[calculate_statistics, create_correlation_heatmap, identify_outliers]
+    tools=tools
 )
 
 data_scientist = Agent(
@@ -73,7 +89,7 @@ data_scientist = Agent(
     goal="Perform advanced analytics on combined quality and process data",
     backstory="You're an expert in machine learning and statistical analysis with a focus on manufacturing applications.",
     llm=llm,
-    tools=[calculate_statistics, create_correlation_heatmap, identify_outliers]
+    tools=tools
 )
 
 report_writer = Agent(
