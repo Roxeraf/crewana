@@ -1,13 +1,11 @@
+# streamlit_app.py
 import streamlit as st
 from crewai import Agent, Task, Crew
 from langchain_openai import ChatOpenAI
-from langchain.tools import Tool
 import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
-import io
 import os
 from dotenv import load_dotenv
+from custom_tools import QualityDataAnalysisTool, ProcessDataAnalysisTool, DataVisualizationTool, OutlierDetectionTool
 
 # Load environment variables
 load_dotenv()
@@ -22,58 +20,19 @@ if not openai_api_key:
 # Initialize OpenAI model
 llm = ChatOpenAI(model_name="gpt-3.5-turbo", openai_api_key=openai_api_key)
 
-# Define tool functions
-def calculate_statistics(data: str) -> str:
-    """Calculate basic statistics of the data."""
-    df = pd.read_json(data)
-    return df.describe().to_json()
+# Initialize tools
+quality_tool = QualityDataAnalysisTool()
+process_tool = ProcessDataAnalysisTool()
+visualization_tool = DataVisualizationTool()
+outlier_tool = OutlierDetectionTool()
 
-def create_correlation_heatmap(data: str) -> str:
-    """Create a correlation heatmap of the data."""
-    df = pd.read_json(data)
-    plt.figure(figsize=(10, 8))
-    sns.heatmap(df.corr(), annot=True, cmap='coolwarm')
-    plt.title('Correlation Heatmap')
-    buf = io.BytesIO()
-    plt.savefig(buf, format='png')
-    buf.seek(0)
-    return "Correlation heatmap created successfully."
-
-def identify_outliers(data: str) -> str:
-    """Identify outliers in the data."""
-    df = pd.read_json(data)
-    Q1 = df.quantile(0.25)
-    Q3 = df.quantile(0.75)
-    IQR = Q3 - Q1
-    outliers = ((df < (Q1 - 1.5 * IQR)) | (df > (Q3 + 1.5 * IQR))).sum()
-    return outliers.to_json()
-
-# Create tools
-tools = [
-    Tool.from_function(
-        func=calculate_statistics,
-        name="Calculate Statistics",
-        description="Calculate basic statistics of the data."
-    ),
-    Tool.from_function(
-        func=create_correlation_heatmap,
-        name="Create Correlation Heatmap",
-        description="Create a correlation heatmap of the data."
-    ),
-    Tool.from_function(
-        func=identify_outliers,
-        name="Identify Outliers",
-        description="Identify outliers in the data."
-    )
-]
-
-# Define agents with tools
+# Define agents with specific tools
 quality_analyst = Agent(
     role="Quality Analyst",
     goal="Analyze quality data to identify trends, issues, and improvement opportunities",
     backstory="You are an experienced quality analyst with expertise in statistical process control and quality management systems.",
     llm=llm,
-    tools=tools
+    tools=[quality_tool, visualization_tool, outlier_tool]
 )
 
 process_analyst = Agent(
@@ -81,7 +40,7 @@ process_analyst = Agent(
     goal="Analyze process data to optimize production efficiency and identify bottlenecks",
     backstory="You have extensive experience in process engineering and lean manufacturing principles.",
     llm=llm,
-    tools=tools
+    tools=[process_tool, visualization_tool]
 )
 
 data_scientist = Agent(
@@ -89,7 +48,7 @@ data_scientist = Agent(
     goal="Perform advanced analytics on combined quality and process data",
     backstory="You're an expert in machine learning and statistical analysis with a focus on manufacturing applications.",
     llm=llm,
-    tools=tools
+    tools=[quality_tool, process_tool, visualization_tool, outlier_tool]
 )
 
 report_writer = Agent(
@@ -127,12 +86,12 @@ if quality_file is not None and process_file is not None:
 
             # Define tasks
             quality_analysis = Task(
-                description=f"Analyze the quality data focusing on {analysis_focus}. Use the available tools to support your analysis. Identify key quality metrics, trends, and potential issues. Quality data: {quality_json}",
+                description=f"Analyze the quality data focusing on {analysis_focus}. Use the Quality Data Analysis Tool and other available tools to support your analysis. Identify key quality metrics, trends, and potential issues. Quality data: {quality_json}",
                 agent=quality_analyst
             )
 
             process_analysis = Task(
-                description=f"Analyze the process data focusing on {analysis_focus}. Use the available tools to support your analysis. Identify efficiency metrics, bottlenecks, and areas for improvement. Process data: {process_json}",
+                description=f"Analyze the process data focusing on {analysis_focus}. Use the Process Data Analysis Tool and other available tools to support your analysis. Identify efficiency metrics, bottlenecks, and areas for improvement. Process data: {process_json}",
                 agent=process_analyst
             )
 
