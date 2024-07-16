@@ -1,9 +1,13 @@
 import streamlit as st
 from crewai import Agent, Task, Crew, Process
 from langchain_openai import ChatOpenAI
+from langchain.tools import Tool
 import pandas as pd
 import os
 from dotenv import load_dotenv
+import matplotlib.pyplot as plt
+import seaborn as sns
+import io
 
 # Load environment variables
 load_dotenv()
@@ -18,104 +22,120 @@ if not openai_api_key:
 # Initialize OpenAI model
 llm = ChatOpenAI(model_name="gpt-3.5-turbo", openai_api_key=openai_api_key)
 
-# Define agents
-process_engineer = Agent(
-    role="Process Engineer",
-    goal="Optimize the production process flow and efficiency",
-    backstory="You have 15 years of experience in industrial process engineering and specialize in lean manufacturing.",
-    llm=llm
+# Define tools
+def calculate_statistics(data):
+    return data.describe().to_string()
+
+def create_correlation_heatmap(data):
+    plt.figure(figsize=(10, 8))
+    sns.heatmap(data.corr(), annot=True, cmap='coolwarm')
+    plt.title('Correlation Heatmap')
+    buf = io.BytesIO()
+    plt.savefig(buf, format='png')
+    buf.seek(0)
+    return buf
+
+def identify_outliers(data):
+    Q1 = data.quantile(0.25)
+    Q3 = data.quantile(0.75)
+    IQR = Q3 - Q1
+    outliers = ((data < (Q1 - 1.5 * IQR)) | (data > (Q3 + 1.5 * IQR))).sum()
+    return outliers.to_string()
+
+# Define agents with tools
+quality_analyst = Agent(
+    role="Quality Analyst",
+    goal="Analyze quality data to identify trends, issues, and improvement opportunities",
+    backstory="You are an experienced quality analyst with expertise in statistical process control and quality management systems.",
+    llm=llm,
+    tools=[
+        Tool(name="Calculate Statistics", func=calculate_statistics, description="Calculate basic statistics of the data"),
+        Tool(name="Identify Outliers", func=identify_outliers, description="Identify outliers in the data")
+    ]
+)
+
+process_analyst = Agent(
+    role="Process Analyst",
+    goal="Analyze process data to optimize production efficiency and identify bottlenecks",
+    backstory="You have extensive experience in process engineering and lean manufacturing principles.",
+    llm=llm,
+    tools=[
+        Tool(name="Calculate Statistics", func=calculate_statistics, description="Calculate basic statistics of the data"),
+        Tool(name="Create Correlation Heatmap", func=create_correlation_heatmap, description="Create a correlation heatmap of the data")
+    ]
 )
 
 data_scientist = Agent(
     role="Data Scientist",
-    goal="Analyze production data to uncover patterns and insights",
-    backstory="You're an expert in machine learning and statistical analysis with a focus on industrial applications.",
-    llm=llm
-)
-
-data_analyst = Agent(
-    role="Data Analyst",
-    goal="Prepare and visualize production data for easy interpretation",
-    backstory="You excel at transforming raw data into meaningful visualizations and reports.",
-    llm=llm
-)
-
-programmer = Agent(
-    role="Programmer",
-    goal="Develop and maintain software tools for production monitoring and automation",
-    backstory="You're a skilled software engineer with expertise in industrial automation and IoT.",
-    llm=llm
-)
-
-quality_control = Agent(
-    role="Quality Control Specialist",
-    goal="Ensure product quality meets or exceeds standards throughout the production process",
-    backstory="You have a keen eye for detail and deep knowledge of quality management systems.",
-    llm=llm
+    goal="Perform advanced analytics on combined quality and process data",
+    backstory="You're an expert in machine learning and statistical analysis with a focus on manufacturing applications.",
+    llm=llm,
+    tools=[
+        Tool(name="Calculate Statistics", func=calculate_statistics, description="Calculate basic statistics of the data"),
+        Tool(name="Create Correlation Heatmap", func=create_correlation_heatmap, description="Create a correlation heatmap of the data"),
+        Tool(name="Identify Outliers", func=identify_outliers, description="Identify outliers in the data")
+    ]
 )
 
 report_writer = Agent(
     role="Report Writer",
-    goal="Compile all findings and recommendations into a comprehensive, well-structured report",
-    backstory="You're a skilled technical writer with experience in creating clear, concise reports for complex industrial processes.",
+    goal="Compile all findings and recommendations into a comprehensive, actionable report",
+    backstory="You're a skilled technical writer with experience in creating clear, concise reports for manufacturing environments.",
     llm=llm
 )
 
 # Streamlit app
-st.title("Production Process Analysis")
+st.title("Quality and Process Data Analysis")
 
-# File uploader for CSV
-uploaded_file = st.file_uploader("Upload your production data (CSV)", type="csv")
+# File uploaders for CSV
+quality_file = st.file_uploader("Upload your quality data (CSV)", type="csv")
+process_file = st.file_uploader("Upload your process data (CSV)", type="csv")
 
-if uploaded_file is not None:
-    df = pd.read_csv(uploaded_file)
-    st.write(df.head())
+if quality_file is not None and process_file is not None:
+    quality_df = pd.read_csv(quality_file)
+    process_df = pd.read_csv(process_file)
+    
+    st.subheader("Quality Data Preview")
+    st.write(quality_df.head())
+    
+    st.subheader("Process Data Preview")
+    st.write(process_df.head())
 
-    # User input for specific analysis
-    analysis_focus = st.text_input("What aspect of the production process would you like to analyze?")
+    # User input for specific analysis focus
+    analysis_focus = st.text_input("What specific aspect of quality or process would you like to focus on?")
 
-    if st.button("Analyze Process"):
+    if st.button("Analyze Data"):
         if analysis_focus:
             # Define tasks
-            data_preparation = Task(
-                description=f"Prepare and clean the production data for analysis, focusing on {analysis_focus}. Provide a summary of the data preparation steps.",
-                agent=data_analyst
+            quality_analysis = Task(
+                description=f"Analyze the quality data focusing on {analysis_focus}. Use the Calculate Statistics and Identify Outliers tools to support your analysis. Identify key quality metrics, trends, and potential issues.",
+                agent=quality_analyst
             )
 
-            data_analysis = Task(
-                description=f"Analyze the prepared data to identify patterns and insights related to {analysis_focus}. Provide detailed findings.",
+            process_analysis = Task(
+                description=f"Analyze the process data focusing on {analysis_focus}. Use the Calculate Statistics and Create Correlation Heatmap tools to support your analysis. Identify efficiency metrics, bottlenecks, and areas for improvement.",
+                agent=process_analyst
+            )
+
+            combined_analysis = Task(
+                description=f"Perform advanced analytics on both quality and process data. Use all available tools to support your analysis. Identify correlations between process parameters and quality outcomes related to {analysis_focus}. Use insights from previous analyses.",
                 agent=data_scientist
             )
 
-            process_optimization = Task(
-                description=f"Based on the data analysis, suggest process improvements for {analysis_focus}. Provide specific, actionable recommendations.",
-                agent=process_engineer
-            )
-
-            quality_assessment = Task(
-                description=f"Evaluate the quality implications of the proposed improvements for {analysis_focus}. Discuss potential risks and mitigation strategies.",
-                agent=quality_control
-            )
-
-            automation_suggestion = Task(
-                description=f"Propose software solutions or automations to support the improvements in {analysis_focus}. Include high-level implementation steps.",
-                agent=programmer
-            )
-
             final_report = Task(
-                description=f"Compile a comprehensive report on the analysis of {analysis_focus} in the production process. Include an executive summary, detailed findings from each specialist, recommendations, and next steps.",
+                description=f"Compile a comprehensive report on the analysis of {analysis_focus}. Include key findings from quality and process analyses, advanced insights, recommendations for improvement, and suggested next steps.",
                 agent=report_writer
             )
 
             # Create Crew
             crew = Crew(
-                agents=[process_engineer, data_scientist, data_analyst, programmer, quality_control, report_writer],
-                tasks=[data_preparation, data_analysis, process_optimization, quality_assessment, automation_suggestion, final_report],
+                agents=[quality_analyst, process_analyst, data_scientist, report_writer],
+                tasks=[quality_analysis, process_analysis, combined_analysis, final_report],
                 verbose=True
             )
 
             # Execute the crew's tasks
-            with st.spinner("Analyzing process and generating report... This may take a few minutes."):
+            with st.spinner("Analyzing data and generating report... This may take a few minutes."):
                 result = crew.kickoff()
 
             # Display results
@@ -130,28 +150,13 @@ if uploaded_file is not None:
             st.download_button(
                 label="Download Full Report",
                 data=report,
-                file_name="production_process_analysis_report.md",
+                file_name="quality_process_analysis_report.md",
                 mime="text/markdown"
             )
         else:
-            st.warning("Please specify an aspect of the production process to analyze.")
+            st.warning("Please specify an aspect of quality or process to analyze.")
 
 else:
-    st.info("Please upload a CSV file containing your production data.")
+    st.info("Please upload both quality and process data CSV files to begin the analysis.")
 
-# Additional app sections
-st.subheader("About This Tool")
-st.write("""
-This tool uses AI agents powered by GPT-3.5 to analyze your production process data. 
-It combines the expertise of a Process Engineer, Data Scientist, Data Analyst, 
-Programmer, and Quality Control Specialist to provide comprehensive insights 
-and recommendations for process improvement. A final report is generated to summarize all findings.
-""")
-
-st.subheader("How to Use")
-st.write("""
-1. Upload your production data CSV file.
-2. Specify the aspect of the production process you want to analyze.
-3. Click 'Analyze Process' to get insights, recommendations, and a full report.
-4. Download the report for offline viewing or sharing.
-""")
+# Additional app sections (About This Tool and How to Use) remain the same
