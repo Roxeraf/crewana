@@ -1,4 +1,3 @@
-# streamlit_app.py
 import streamlit as st
 from crewai import Agent, Task, Crew
 from langchain_openai import ChatOpenAI
@@ -26,13 +25,18 @@ process_tool = ProcessDataAnalysisTool()
 visualization_tool = DataVisualizationTool()
 outlier_tool = OutlierDetectionTool()
 
+# Create a list of tools to pass to agents
+quality_tools = [quality_tool, visualization_tool, outlier_tool]
+process_tools = [process_tool, visualization_tool]
+data_scientist_tools = [quality_tool, process_tool, visualization_tool, outlier_tool]
+
 # Define agents with specific tools
 quality_analyst = Agent(
     role="Quality Analyst",
     goal="Analyze quality data to identify trends, issues, and improvement opportunities",
     backstory="You are an experienced quality analyst with expertise in statistical process control and quality management systems.",
     llm=llm,
-    tools=[quality_tool, visualization_tool, outlier_tool]
+    tools=quality_tools
 )
 
 process_analyst = Agent(
@@ -40,7 +44,7 @@ process_analyst = Agent(
     goal="Analyze process data to optimize production efficiency and identify bottlenecks",
     backstory="You have extensive experience in process engineering and lean manufacturing principles.",
     llm=llm,
-    tools=[process_tool, visualization_tool]
+    tools=process_tools
 )
 
 data_scientist = Agent(
@@ -48,7 +52,7 @@ data_scientist = Agent(
     goal="Perform advanced analytics on combined quality and process data",
     backstory="You're an expert in machine learning and statistical analysis with a focus on manufacturing applications.",
     llm=llm,
-    tools=[quality_tool, process_tool, visualization_tool, outlier_tool]
+    tools=data_scientist_tools
 )
 
 report_writer = Agent(
@@ -138,5 +142,6 @@ else:
     st.info("Please upload both quality and process data CSV files to begin the analysis.")
 
 # Additional app sections (About This Tool and How to Use) remain the same
+
 
 
