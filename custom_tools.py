@@ -1,22 +1,25 @@
 # custom_tools.py
-from crewai_tools import BaseTool
+from langchain.tools import BaseTool
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 import io
 
 class QualityDataAnalysisTool(BaseTool):
-    name: str = "Quality Data Analysis Tool"
-    description: str = "Analyzes quality data to identify trends, issues, and improvement opportunities."
+    name = "Quality Data Analysis Tool"
+    description = "Analyzes quality data to identify trends, issues, and improvement opportunities."
 
     def _run(self, data: str) -> str:
         df = pd.read_json(data)
         stats = df.describe().to_string()
         return f"Quality Data Analysis:\n{stats}"
 
+    def _arun(self, data: str):
+        raise NotImplementedError("This tool does not support async")
+
 class ProcessDataAnalysisTool(BaseTool):
-    name: str = "Process Data Analysis Tool"
-    description: str = "Analyzes process data to optimize production efficiency and identify bottlenecks."
+    name = "Process Data Analysis Tool"
+    description = "Analyzes process data to optimize production efficiency and identify bottlenecks."
 
     def _run(self, data: str) -> str:
         df = pd.read_json(data)
@@ -24,9 +27,12 @@ class ProcessDataAnalysisTool(BaseTool):
         bottlenecks = df.min().to_string()
         return f"Process Efficiency: {efficiency}\nPotential Bottlenecks:\n{bottlenecks}"
 
+    def _arun(self, data: str):
+        raise NotImplementedError("This tool does not support async")
+
 class DataVisualizationTool(BaseTool):
-    name: str = "Data Visualization Tool"
-    description: str = "Creates visualizations of data for better insights."
+    name = "Data Visualization Tool"
+    description = "Creates visualizations of data for better insights."
 
     def _run(self, data: str) -> str:
         df = pd.read_json(data)
@@ -38,9 +44,12 @@ class DataVisualizationTool(BaseTool):
         buf.seek(0)
         return "Correlation heatmap created successfully. (Image data not shown in text output)"
 
+    def _arun(self, data: str):
+        raise NotImplementedError("This tool does not support async")
+
 class OutlierDetectionTool(BaseTool):
-    name: str = "Outlier Detection Tool"
-    description: str = "Identifies outliers in the dataset."
+    name = "Outlier Detection Tool"
+    description = "Identifies outliers in the dataset."
 
     def _run(self, data: str) -> str:
         df = pd.read_json(data)
@@ -49,3 +58,6 @@ class OutlierDetectionTool(BaseTool):
         IQR = Q3 - Q1
         outliers = ((df < (Q1 - 1.5 * IQR)) | (df > (Q3 + 1.5 * IQR))).sum()
         return f"Outliers detected:\n{outliers.to_string()}"
+
+    def _arun(self, data: str):
+        raise NotImplementedError("This tool does not support async")
